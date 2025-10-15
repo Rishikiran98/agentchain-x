@@ -15,6 +15,7 @@ import WorkflowExplainer from "@/components/WorkflowExplainer";
 import WelcomeModal from "@/components/WelcomeModal";
 import PromptInput from "@/components/PromptInput";
 import SimpleMode from "@/components/SimpleMode";
+import WorkflowManagement from "@/components/WorkflowManagement";
 import { WorkflowNode, WorkflowEdge } from "@/types/workflow";
 
 const Studio = () => {
@@ -34,6 +35,7 @@ const Studio = () => {
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [isSimpleMode, setIsSimpleMode] = useState(true);
+  const [showWorkflowManagement, setShowWorkflowManagement] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -385,9 +387,21 @@ const Studio = () => {
         duration: 5000,
       });
     } catch (error: any) {
+      console.error('Workflow generation error:', error);
+      
+      let errorMessage = "Could not generate workflow. Try again or use a template.";
+      
+      if (error.message?.includes('Rate limit')) {
+        errorMessage = "Rate limit exceeded. Please wait a moment and try again.";
+      } else if (error.message?.includes('credits') || error.message?.includes('Payment')) {
+        errorMessage = "AI credits depleted. Please add credits to continue.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Generation failed",
-        description: error.message || "Could not generate workflow. Try again or use a template.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -435,9 +449,21 @@ const Studio = () => {
         description: "Your agents are working...",
       });
     } catch (error: any) {
+      console.error('Workflow execution error:', error);
+      
+      let errorMessage = "Could not execute workflow. Please try again.";
+      
+      if (error.message?.includes('Rate limit')) {
+        errorMessage = "Rate limit exceeded. Please wait a moment and try again.";
+      } else if (error.message?.includes('credits') || error.message?.includes('Payment')) {
+        errorMessage = "AI credits depleted. Please add credits to continue.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Execution failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -615,6 +641,14 @@ const Studio = () => {
                 {isConnectMode ? "Connecting..." : "Connect"}
               </Button>
               <Button
+                onClick={() => setShowWorkflowManagement(true)}
+                variant="outline"
+                size="sm"
+              >
+                <FolderOpen className="h-4 w-4 mr-2" />
+                My Workflows
+              </Button>
+              <Button
                 onClick={() => setShowTemplates(true)}
                 variant="outline"
                 size="sm"
@@ -667,6 +701,22 @@ const Studio = () => {
             </>
           )}
         </div>
+
+        {showWorkflowManagement && (
+          <WorkflowManagement
+            onLoadWorkflow={(workflow) => {
+              setNodes(workflow.nodes as any);
+              setEdges(workflow.edges as any);
+              setCurrentWorkflowId(workflow.id);
+              setLoadedTemplateId(null);
+              toast({
+                title: "Workflow loaded",
+                description: workflow.title,
+              });
+            }}
+            onClose={() => setShowWorkflowManagement(false)}
+          />
+        )}
 
         {showTemplates && (
           <TemplateSelector

@@ -183,9 +183,22 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
       console.error('Error in workflow execution:', error);
       setIsGenerating(false);
       setIsExecuting(false);
+      
+      let errorMessage = "Try again or rephrase your request";
+      
+      if (error.message?.includes('Rate limit')) {
+        errorMessage = "Rate limit exceeded. Please wait a moment and try again.";
+      } else if (error.message?.includes('credits') || error.message?.includes('Payment')) {
+        errorMessage = "AI credits depleted. Please add credits to continue.";
+      } else if (error.message?.includes('too long')) {
+        errorMessage = "Your prompt is too long. Please shorten it and try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Something went wrong",
-        description: error.message || "Try again or rephrase your request",
+        description: errorMessage,
         variant: "destructive",
       });
     }

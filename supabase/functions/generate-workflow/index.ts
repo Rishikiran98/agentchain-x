@@ -12,13 +12,40 @@ serve(async (req) => {
 
   try {
     const { prompt } = await req.json();
+    
+    // Input validation
+    if (!prompt || typeof prompt !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Prompt is required and must be a string' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (prompt.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Prompt cannot be empty' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (prompt.length > 5000) {
+      return new Response(
+        JSON.stringify({ error: 'Prompt is too long. Maximum 5000 characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      console.error('LOVABLE_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'AI service configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log('Generating workflow from prompt:', prompt);
+    console.log('Generating workflow from prompt (length:', prompt.length, 'chars)');
 
     const systemPrompt = `You are an expert workflow architect for PromptChain-X. Design optimal multi-agent workflows that adapt to task complexity, domain, and required expertise.
 
@@ -169,6 +196,28 @@ EXAMPLES:
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
+      
+      // Handle specific error codes
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Rate limit exceeded. Please wait a moment and try again.',
+            code: 'RATE_LIMIT'
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'AI credits depleted. Please add credits to continue.',
+            code: 'PAYMENT_REQUIRED'
+          }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       throw new Error(`AI gateway error: ${response.status}`);
     }
 

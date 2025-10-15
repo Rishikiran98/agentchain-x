@@ -55,6 +55,14 @@ serve(async (req) => {
   try {
     const { workflowId } = await req.json();
     
+    // Input validation
+    if (!workflowId || typeof workflowId !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Workflow ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
@@ -125,7 +133,18 @@ serve(async (req) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`AI API error: ${errorText}`);
+        console.error(`AI API error for node ${node.id}:`, response.status, errorText);
+        
+        // Handle specific error codes
+        if (response.status === 429) {
+          throw new Error('Rate limit exceeded. Please wait and try again.');
+        }
+        
+        if (response.status === 402) {
+          throw new Error('AI credits depleted. Please add credits to continue.');
+        }
+        
+        throw new Error(`AI API error: ${response.status} - ${errorText}`);
       }
 
       const aiResponse = await response.json();
