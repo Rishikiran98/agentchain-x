@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -16,11 +16,10 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [agents, setAgents] = useState<WorkflowNode[]>([]);
-  const [currentAgent, setCurrentAgent] = useState(0);
-  const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ role: string; content: string; agent: string }>>([]);
   const [finalResult, setFinalResult] = useState("");
   const [showWorkflow, setShowWorkflow] = useState(false);
-  const [workflowId, setWorkflowId] = useState<string | null>(null);
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const examples = [
@@ -30,49 +29,88 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
     "Research the benefits of meditation and summarize in 3 paragraphs"
   ];
 
-  useEffect(() => {
-    if (isExecuting && agents.length > 0) {
-      const interval = setInterval(() => {
-        setCurrentAgent((prev) => {
-          if (prev < agents.length - 1) {
-            return prev + 1;
-          }
-          return prev;
-        });
-      }, 3000);
+  const getAgentEmoji = (role: string) => {
+    const lower = role.toLowerCase();
+    if (lower.includes('research')) return '🔍';
+    if (lower.includes('write') || lower.includes('writer')) return '✍️';
+    if (lower.includes('strateg')) return '💡';
+    if (lower.includes('review')) return '🔍';
+    if (lower.includes('develop')) return '💻';
+    if (lower.includes('analy')) return '📊';
+    if (lower.includes('design')) return '🎨';
+    if (lower.includes('edit')) return '✏️';
+    return '🤖';
+  };
 
-      return () => clearInterval(interval);
-    }
-  }, [isExecuting, agents.length]);
-
-  // Subscribe to execution messages
-  useEffect(() => {
-    if (!workflowId) return;
-
-    const channel = supabase
-      .channel('execution-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `run_id=eq.${workflowId}`
-        },
-        (payload: any) => {
-          const newMsg = payload.new;
-          setMessages(prev => [...prev, {
-            role: newMsg.node_id || 'system',
-            content: newMsg.content
-          }]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+  const pollForCompletion = async (runId: string, workflowNodes: WorkflowNode[]) => {
+    // Poll for run completion
+    let attempts = 0;
+    const maxAttempts = 60; // 60 seconds max
+    
+    const checkCompletion = async (): Promise<boolean> => {
+      const { data: run } = await supabase
+        .from('runs')
+        .select('status')
+        .eq('id', runId)
+        .single();
+      
+      return run?.status === 'completed' || run?.status === 'failed';
     };
-  }, [workflowId]);
+
+    while (attempts < maxAttempts) {
+      const isComplete = await checkCompletion();
+      if (isComplete) break;
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      attempts++;
+    }
+
+    // Fetch all messages from this run
+    const { data: runMessages, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('run_id', runId)
+      .order('timestamp', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching messages:', error);
+      return;
+    }
+
+    console.log('Fetched messages:', runMessages);
+
+    if (runMessages && runMessages.length > 0) {
+      // Map messages to agents
+      const formattedMessages = runMessages.map(msg => {
+        const agent = workflowNodes.find(n => n.id === msg.node_id);
+        return {
+          role: msg.node_id,
+          agent: agent?.role || 'Agent',
+          content: msg.content
+        };
+      });
+
+      setMessages(formattedMessages);
+      
+      // Get the last message as final result
+      const lastMessage = runMessages[runMessages.length - 1];
+      setFinalResult(lastMessage.content);
+
+      setIsExecuting(false);
+      toast({
+        title: "✨ Done!",
+        description: "Here's what your AI team created",
+        duration: 5000,
+      });
+    } else {
+      setIsExecuting(false);
+      toast({
+        title: "Workflow completed",
+        description: "No output was generated",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -87,7 +125,6 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
     setIsGenerating(true);
     setMessages([]);
     setFinalResult("");
-    setCurrentAgent(0);
 
     try {
       // Generate workflow
@@ -117,6 +154,8 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
 
       if (saveError) throw saveError;
 
+      setCurrentWorkflowId(savedWorkflow.id);
+
       toast({
         title: "Your AI team is on it 💡",
         description: `${workflow.nodes.length} agents working together...`,
@@ -132,25 +171,13 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
 
       if (execError) throw execError;
 
-      setWorkflowId(execData.runId);
+      console.log('Execution started, run ID:', execData.runId);
 
-      // Wait for completion (simplified - in production would use realtime)
-      setTimeout(() => {
-        setIsExecuting(false);
-        
-        // Get the last message as final result
-        if (messages.length > 0) {
-          setFinalResult(messages[messages.length - 1].content);
-        }
-
-        toast({
-          title: "✨ Done!",
-          description: "Here's what your AI team created",
-          duration: 5000,
-        });
-      }, workflow.nodes.length * 3500);
+      // Poll for completion and fetch results
+      await pollForCompletion(execData.runId, workflow.nodes);
 
     } catch (error: any) {
+      console.error('Error in workflow execution:', error);
       setIsGenerating(false);
       setIsExecuting(false);
       toast({
@@ -166,22 +193,8 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
     setAgents([]);
     setMessages([]);
     setFinalResult("");
-    setCurrentAgent(0);
-    setWorkflowId(null);
+    setCurrentWorkflowId(null);
     setShowWorkflow(false);
-  };
-
-  const getAgentEmoji = (role: string) => {
-    const lower = role.toLowerCase();
-    if (lower.includes('research')) return '🔍';
-    if (lower.includes('write') || lower.includes('writer')) return '✍️';
-    if (lower.includes('strateg')) return '💡';
-    if (lower.includes('review')) return '🔍';
-    if (lower.includes('develop')) return '💻';
-    if (lower.includes('analy')) return '📊';
-    if (lower.includes('design')) return '🎨';
-    if (lower.includes('edit')) return '✏️';
-    return '🤖';
   };
 
   if (finalResult) {
@@ -218,19 +231,16 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
               <Card className="p-6 bg-card/30 animate-fade-in">
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-accent" />
-                  Your AI Team
+                  Your AI Team & Their Conversation
                 </h3>
-                <div className="space-y-3">
-                  {agents.map((agent, i) => (
-                    <div key={agent.id} className="flex items-center gap-3 p-3 rounded-lg bg-background/50">
-                      <span className="text-2xl">{getAgentEmoji(agent.role)}</span>
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">{agent.role}</div>
-                        <div className="text-xs text-muted-foreground line-clamp-1">{agent.systemPrompt}</div>
+                <div className="space-y-4">
+                  {messages.map((msg, i) => (
+                    <div key={i} className="p-4 rounded-lg bg-background/50 border border-border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">{getAgentEmoji(msg.agent)}</span>
+                        <span className="font-semibold text-sm text-primary">{msg.agent}</span>
                       </div>
-                      {i < agents.length - 1 && (
-                        <div className="text-muted-foreground">→</div>
-                      )}
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{msg.content}</p>
                     </div>
                   ))}
                 </div>
@@ -283,33 +293,23 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
             </p>
           </div>
 
-          {agents.length > 0 && (
+          {agents.length > 0 && isExecuting && (
             <div className="space-y-4">
               {agents.map((agent, i) => (
                 <Card 
                   key={agent.id}
-                  className={`p-6 transition-all duration-500 ${
-                    i === currentAgent 
-                      ? 'bg-primary/10 border-primary shadow-lg scale-105' 
-                      : i < currentAgent 
-                      ? 'bg-card/50 border-border opacity-70'
-                      : 'bg-card/30 border-border/50 opacity-50'
-                  }`}
+                  className="p-6 bg-card/50 border-border animate-fade-in"
+                  style={{ animationDelay: `${i * 150}ms` }}
                 >
                   <div className="flex items-center gap-4">
                     <div className="text-3xl">{getAgentEmoji(agent.role)}</div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold">{agent.role}</h3>
-                        {i === currentAgent && (
-                          <span className="flex items-center gap-1 text-xs text-primary">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Thinking...
-                          </span>
-                        )}
-                        {i < currentAgent && (
-                          <span className="text-xs text-green-500">✓ Done</span>
-                        )}
+                        <span className="flex items-center gap-1 text-xs text-primary">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Thinking...
+                        </span>
                       </div>
                       <p className="text-sm text-muted-foreground">{agent.systemPrompt}</p>
                     </div>
@@ -321,12 +321,12 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
 
           {messages.length > 0 && (
             <Card className="p-4 bg-card/30 max-h-64 overflow-y-auto">
-              <h3 className="font-semibold mb-3 text-sm">Team Conversation</h3>
+              <h3 className="font-semibold mb-3 text-sm">Live Team Conversation</h3>
               <div className="space-y-2">
-                {messages.slice(-5).map((msg, i) => (
-                  <div key={i} className="text-sm">
-                    <span className="font-medium text-primary">{agents.find(a => a.id === msg.role)?.role || 'Agent'}:</span>
-                    <span className="text-muted-foreground ml-2">{msg.content.slice(0, 100)}...</span>
+                {messages.map((msg, i) => (
+                  <div key={i} className="text-sm p-2 rounded bg-background/30">
+                    <span className="font-medium text-primary">{msg.agent}:</span>
+                    <p className="text-muted-foreground mt-1">{msg.content.slice(0, 150)}...</p>
                   </div>
                 ))}
               </div>
@@ -372,7 +372,7 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
             <Button 
               onClick={handleSubmit}
               size="lg"
-              disabled={!prompt.trim()}
+              disabled={!prompt.trim() || isGenerating || isExecuting}
               className="bg-gradient-to-r from-primary to-accent"
             >
               <Sparkles className="h-4 w-4 mr-2" />
