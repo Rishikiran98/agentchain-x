@@ -12,6 +12,7 @@ interface WorkflowCanvasProps {
   isConnectMode: boolean;
   connectStart: string | null;
   onDeleteEdge: (edgeId: string) => void;
+  isExecuting?: boolean;
 }
 
 const WorkflowCanvas = ({ 
@@ -22,7 +23,8 @@ const WorkflowCanvas = ({
   onUpdateNode,
   isConnectMode,
   connectStart,
-  onDeleteEdge 
+  onDeleteEdge,
+  isExecuting = false
 }: WorkflowCanvasProps) => {
   const handleDragEnd = (nodeId: string, e: React.DragEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.parentElement?.getBoundingClientRect();
@@ -142,11 +144,13 @@ const WorkflowCanvas = ({
                   : 'border-border hover:border-primary/50'
                 }
                 ${isConnectMode ? 'cursor-pointer' : 'cursor-move'}
+                ${isExecuting ? 'animate-pulse' : ''}
                 bg-card/80 backdrop-blur-sm
               `}
               style={{
                 left: `${node.x}px`,
                 top: `${node.y}px`,
+                boxShadow: isExecuting ? 'var(--glow-primary)' : undefined
               }}
             >
               <div className="space-y-2">

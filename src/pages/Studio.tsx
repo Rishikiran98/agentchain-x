@@ -3,12 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen } from "lucide-react";
+import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen, HelpCircle, Sparkles, Lightbulb } from "lucide-react";
 import WorkflowCanvas from "@/components/WorkflowCanvas";
 import ExecutionPanel from "@/components/ExecutionPanel";
 import NodeEditor from "@/components/NodeEditor";
 import TemplateSelector from "@/components/TemplateSelector";
+import OnboardingTour from "@/components/OnboardingTour";
+import AgentRoleTemplates from "@/components/AgentRoleTemplates";
+import HowItWorksModal from "@/components/HowItWorksModal";
+import WorkflowExplainer from "@/components/WorkflowExplainer";
 import { WorkflowNode, WorkflowEdge } from "@/types/workflow";
+import { workflowTemplates } from "@/data/templates";
 
 const Studio = () => {
   const [user, setUser] = useState<any>(null);
@@ -21,8 +26,20 @@ const Studio = () => {
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [connectStart, setConnectStart] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const [showExplainer, setShowExplainer] = useState(false);
+  const [runTour, setRunTour] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Check if user has seen tour
+    const hasSeenTour = localStorage.getItem('hasSeenTour');
+    if (!hasSeenTour) {
+      // Small delay to let UI render first
+      setTimeout(() => setRunTour(true), 1000);
+    }
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -177,6 +194,38 @@ const Studio = () => {
     });
   };
 
+  const loadDemoWorkflow = () => {
+    const demoTemplate = workflowTemplates[0]; // Startup Idea Generator
+    setNodes(demoTemplate.nodes);
+    setEdges(demoTemplate.edges);
+    toast({
+      title: "✨ Demo workflow loaded!",
+      description: "Click 'Run Workflow' to see it in action",
+      duration: 5000,
+    });
+  };
+
+  const handleRoleSelect = (role: string, systemPrompt: string) => {
+    if (selectedNode) {
+      updateNode(selectedNode.id, { role, systemPrompt });
+      toast({
+        title: "Role applied",
+        description: `${role} template loaded`,
+      });
+    } else {
+      toast({
+        title: "Select an agent first",
+        description: "Click on an agent to apply this role template",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTourComplete = () => {
+    localStorage.setItem('hasSeenTour', 'true');
+    setRunTour(false);
+  };
+
   const executeWorkflow = async () => {
     if (!currentWorkflowId) {
       await saveWorkflow();
@@ -209,6 +258,8 @@ const Studio = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col">
+      <OnboardingTour runTour={runTour} onComplete={handleTourComplete} />
+      
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="px-6 py-4 flex justify-between items-center">
@@ -219,11 +270,24 @@ const Studio = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {nodes.length === 0 && (
+              <Button
+                onClick={loadDemoWorkflow}
+                variant="outline"
+                size="sm"
+                className="border-accent/50 text-accent hover:bg-accent/10"
+                data-tour="demo"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Try Example
+              </Button>
+            )}
             <Button
               onClick={addNode}
               variant="outline"
               size="sm"
               className="border-primary/50"
+              data-tour="add-agent"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Agent
@@ -233,6 +297,7 @@ const Studio = () => {
               variant={isConnectMode ? "default" : "outline"}
               size="sm"
               className={isConnectMode ? "bg-accent" : ""}
+              data-tour="connect-button"
             >
               <Link2 className="h-4 w-4 mr-2" />
               Connect
@@ -241,6 +306,7 @@ const Studio = () => {
               onClick={() => setShowTemplates(true)}
               variant="outline"
               size="sm"
+              data-tour="templates"
             >
               <FolderOpen className="h-4 w-4 mr-2" />
               Templates
@@ -253,14 +319,32 @@ const Studio = () => {
               <Save className="h-4 w-4 mr-2" />
               Save
             </Button>
+            {nodes.length > 0 && (
+              <Button
+                onClick={() => setShowExplainer(true)}
+                variant="outline"
+                size="sm"
+              >
+                <Lightbulb className="h-4 w-4 mr-2" />
+                Explain
+              </Button>
+            )}
             <Button
               onClick={executeWorkflow}
               disabled={isExecuting || nodes.length === 0}
               size="sm"
               className="bg-primary hover:bg-primary/90"
+              data-tour="run-workflow"
             >
               <Play className="h-4 w-4 mr-2" />
-              Run Workflow
+              {isExecuting ? "Running..." : "Run Workflow"}
+            </Button>
+            <Button
+              onClick={() => setShowHowItWorks(true)}
+              variant="ghost"
+              size="sm"
+            >
+              <HelpCircle className="h-4 w-4" />
             </Button>
             <Button
               onClick={handleSignOut}
@@ -276,7 +360,7 @@ const Studio = () => {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Canvas */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative" data-tour="canvas">
           <WorkflowCanvas
             nodes={nodes}
             edges={edges}
@@ -286,7 +370,10 @@ const Studio = () => {
             isConnectMode={isConnectMode}
             connectStart={connectStart}
             onDeleteEdge={deleteEdge}
+            isExecuting={isExecuting}
           />
+          
+          <AgentRoleTemplates onSelectRole={handleRoleSelect} />
         </div>
 
         {showTemplates && (
@@ -295,6 +382,18 @@ const Studio = () => {
             onClose={() => setShowTemplates(false)}
           />
         )}
+
+        <HowItWorksModal
+          open={showHowItWorks}
+          onClose={() => setShowHowItWorks(false)}
+        />
+
+        <WorkflowExplainer
+          open={showExplainer}
+          onClose={() => setShowExplainer(false)}
+          nodes={nodes}
+          edges={edges}
+        />
 
         {/* Right Panel */}
         <div className="w-96 border-l border-border bg-card/50 flex flex-col">
