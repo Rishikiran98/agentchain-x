@@ -1,10 +1,10 @@
-import { WorkflowNode } from "@/pages/Studio";
+import { WorkflowNode } from "@/types/workflow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Trash2, Settings } from "lucide-react";
 
 interface NodeEditorProps {
   node: WorkflowNode;
@@ -16,7 +16,10 @@ const NodeEditor = ({ node, onUpdate, onDelete }: NodeEditorProps) => {
   return (
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Agent Configuration</h2>
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Agent Configuration</h2>
+        </div>
         <Button
           onClick={onDelete}
           variant="ghost"

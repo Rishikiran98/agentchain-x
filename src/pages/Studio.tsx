@@ -3,29 +3,24 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Network, Play, LogOut, Plus } from "lucide-react";
+import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen } from "lucide-react";
 import WorkflowCanvas from "@/components/WorkflowCanvas";
 import ExecutionPanel from "@/components/ExecutionPanel";
 import NodeEditor from "@/components/NodeEditor";
-
-export interface WorkflowNode {
-  id: string;
-  role: string;
-  systemPrompt: string;
-  model: string;
-  temperature: number;
-  maxTokens: number;
-  x: number;
-  y: number;
-}
+import TemplateSelector from "@/components/TemplateSelector";
+import { WorkflowNode, WorkflowEdge } from "@/types/workflow";
 
 const Studio = () => {
   const [user, setUser] = useState<any>(null);
   const [nodes, setNodes] = useState<WorkflowNode[]>([]);
+  const [edges, setEdges] = useState<WorkflowEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+  const [isConnectMode, setIsConnectMode] = useState(false);
+  const [connectStart, setConnectStart] = useState<string | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -62,10 +57,56 @@ const Studio = () => {
       model: "google/gemini-2.5-flash",
       temperature: 0.7,
       maxTokens: 1000,
-      x: Math.random() * 300,
-      y: Math.random() * 200,
+      x: Math.random() * 400 + 50,
+      y: Math.random() * 300 + 50,
     };
     setNodes([...nodes, newNode]);
+  };
+
+  const handleNodeClick = (nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    if (isConnectMode) {
+      if (!connectStart) {
+        setConnectStart(nodeId);
+        toast({
+          title: "Connection mode",
+          description: "Click another node to complete the connection",
+        });
+      } else if (connectStart !== nodeId) {
+        // Create edge
+        const newEdge: WorkflowEdge = {
+          id: `edge-${Date.now()}`,
+          from: connectStart,
+          to: nodeId,
+        };
+        setEdges([...edges, newEdge]);
+        setConnectStart(null);
+        setIsConnectMode(false);
+        toast({
+          title: "Connection created",
+          description: "Agents are now connected",
+        });
+      }
+    } else {
+      setSelectedNode(node);
+    }
+  };
+
+  const toggleConnectMode = () => {
+    setIsConnectMode(!isConnectMode);
+    setConnectStart(null);
+    if (!isConnectMode) {
+      toast({
+        title: "Connect mode enabled",
+        description: "Click on nodes to create connections",
+      });
+    }
+  };
+
+  const deleteEdge = (edgeId: string) => {
+    setEdges(edges.filter(e => e.id !== edgeId));
   };
 
   const updateNode = (nodeId: string, updates: Partial<WorkflowNode>) => {
@@ -83,20 +124,35 @@ const Studio = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('workflows')
-        .insert([{
-          user_id: user.id,
-          title: 'My Workflow',
-          nodes: nodes as any,
-          edges: [] as any
-        }])
-        .select()
-        .single();
+      if (currentWorkflowId) {
+        // Update existing
+        const { error } = await supabase
+          .from('workflows')
+          .update({
+            nodes: nodes as any,
+            edges: edges as any,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentWorkflowId);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Create new
+        const { data, error } = await supabase
+          .from('workflows')
+          .insert([{
+            user_id: user.id,
+            title: 'My Workflow',
+            nodes: nodes as any,
+            edges: edges as any
+          }])
+          .select()
+          .single();
 
-      setCurrentWorkflowId(data.id);
+        if (error) throw error;
+        setCurrentWorkflowId(data.id);
+      }
+
       toast({
         title: "Workflow saved",
         description: "Your workflow has been saved successfully.",
@@ -108,6 +164,17 @@ const Studio = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const loadTemplate = (templateNodes: WorkflowNode[], templateEdges: WorkflowEdge[]) => {
+    setNodes(templateNodes);
+    setEdges(templateEdges);
+    setCurrentWorkflowId(null);
+    setShowTemplates(false);
+    toast({
+      title: "Template loaded",
+      description: "You can now customize and run this workflow",
+    });
   };
 
   const executeWorkflow = async () => {
@@ -148,7 +215,7 @@ const Studio = () => {
           <div className="flex items-center gap-4">
             <Network className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Workflow Studio
+              PromptChain-X
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -162,10 +229,28 @@ const Studio = () => {
               Add Agent
             </Button>
             <Button
+              onClick={toggleConnectMode}
+              variant={isConnectMode ? "default" : "outline"}
+              size="sm"
+              className={isConnectMode ? "bg-accent" : ""}
+            >
+              <Link2 className="h-4 w-4 mr-2" />
+              Connect
+            </Button>
+            <Button
+              onClick={() => setShowTemplates(true)}
+              variant="outline"
+              size="sm"
+            >
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Templates
+            </Button>
+            <Button
               onClick={saveWorkflow}
               variant="outline"
               size="sm"
             >
+              <Save className="h-4 w-4 mr-2" />
               Save
             </Button>
             <Button
@@ -194,11 +279,22 @@ const Studio = () => {
         <div className="flex-1 relative">
           <WorkflowCanvas
             nodes={nodes}
+            edges={edges}
             selectedNode={selectedNode}
-            onSelectNode={setSelectedNode}
+            onSelectNode={handleNodeClick}
             onUpdateNode={updateNode}
+            isConnectMode={isConnectMode}
+            connectStart={connectStart}
+            onDeleteEdge={deleteEdge}
           />
         </div>
+
+        {showTemplates && (
+          <TemplateSelector
+            onSelect={loadTemplate}
+            onClose={() => setShowTemplates(false)}
+          />
+        )}
 
         {/* Right Panel */}
         <div className="w-96 border-l border-border bg-card/50 flex flex-col">

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Message {
   id: string;
@@ -55,36 +56,73 @@ const ExecutionPanel = ({ runId }: ExecutionPanelProps) => {
     };
   }, [runId]);
 
+  const exportLog = () => {
+    const logText = messages
+      .map(m => `[${new Date(m.timestamp).toLocaleString()}] ${m.role}:\n${m.content}\n`)
+      .join('\n');
+    
+    const blob = new Blob([logText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `workflow-log-${runId}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="h-80 border-t border-border bg-background/50 backdrop-blur-sm flex flex-col">
-      <div className="p-4 border-b border-border">
+    <div className="h-96 border-t border-border bg-background/50 backdrop-blur-sm flex flex-col">
+      <div className="p-4 border-b border-border flex justify-between items-center">
         <h3 className="font-semibold flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-primary" />
-          Agent Messages
+          Conversation Log
         </h3>
+        {messages.length > 0 && (
+          <Button
+            onClick={exportLog}
+            size="sm"
+            variant="ghost"
+          >
+            <Download className="h-3 w-3 mr-1" />
+            Export
+          </Button>
+        )}
       </div>
       
       <ScrollArea className="flex-1 p-4">
-        <div className="space-y-3">
+        <div className="space-y-4">
           {messages.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               Waiting for agents to communicate...
             </p>
           ) : (
-            messages.map((msg) => (
-              <Card key={msg.id} className="p-3 bg-card/50 border-border">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span className="text-xs font-semibold text-primary">
-                    {msg.role}
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </span>
+            messages.map((msg, idx) => (
+              <Card key={msg.id} className="p-4 bg-card/50 border-border hover:border-primary/30 transition-all">
+                <div className="flex items-start gap-3">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="text-xs font-bold text-primary">
+                        {idx + 1}
+                      </span>
+                    </div>
+                    {idx < messages.length - 1 && (
+                      <div className="h-full w-0.5 bg-primary/20" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-primary">
+                        {msg.role}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(msg.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                      {msg.content}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-sm text-foreground/90 whitespace-pre-wrap">
-                  {msg.content}
-                </p>
               </Card>
             ))
           )}

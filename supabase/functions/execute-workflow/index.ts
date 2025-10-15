@@ -7,6 +7,46 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Topological sort for graph execution
+function topologicalSort(nodes: any[], edges: any[]): any[] {
+  const graph = new Map<string, string[]>();
+  const inDegree = new Map<string, number>();
+  
+  // Initialize
+  nodes.forEach(node => {
+    graph.set(node.id, []);
+    inDegree.set(node.id, 0);
+  });
+  
+  // Build graph
+  edges.forEach(edge => {
+    graph.get(edge.from)?.push(edge.to);
+    inDegree.set(edge.to, (inDegree.get(edge.to) || 0) + 1);
+  });
+  
+  // Find nodes with no incoming edges
+  const queue: string[] = [];
+  inDegree.forEach((degree, nodeId) => {
+    if (degree === 0) queue.push(nodeId);
+  });
+  
+  const sorted: string[] = [];
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!;
+    sorted.push(nodeId);
+    
+    graph.get(nodeId)?.forEach(neighbor => {
+      inDegree.set(neighbor, (inDegree.get(neighbor) || 0) - 1);
+      if (inDegree.get(neighbor) === 0) {
+        queue.push(neighbor);
+      }
+    });
+  }
+  
+  // Return nodes in execution order
+  return sorted.map(id => nodes.find(n => n.id === id)).filter(Boolean);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -36,22 +76,34 @@ serve(async (req) => {
       .insert({
         workflow_id: workflowId,
         status: 'running',
-        shared_memory: { context: '', facts: [], recent_messages: [] }
+        shared_memory: { context: '', facts: [], history: [] }
       })
       .select()
       .single();
 
     if (runError) throw runError;
 
-    // Execute nodes sequentially
     const nodes = workflow.nodes || [];
+    const edges = workflow.edges || [];
     let sharedMemory = run.shared_memory;
 
-    for (const node of nodes) {
-      console.log(`Executing node: ${node.id}`);
+    // Sort nodes by graph dependencies
+    const executionOrder = edges.length > 0 
+      ? topologicalSort(nodes, edges)
+      : nodes;
 
-      // Build prompt with shared memory
-      const prompt = `${node.systemPrompt}\n\nShared Context:\n${JSON.stringify(sharedMemory, null, 2)}\n\nYour role is: ${node.role}`;
+    console.log('Execution order:', executionOrder.map((n: any) => n.role));
+
+    // Execute nodes in order
+    for (const node of executionOrder) {
+      console.log(`Executing node: ${node.id} (${node.role})`);
+
+      // Build context from shared memory
+      const contextStr = sharedMemory.history.length > 0
+        ? sharedMemory.history.map((h: any) => `[${h.role}]: ${h.content}`).join('\n\n')
+        : 'No previous context.';
+
+      const prompt = `${node.systemPrompt}\n\nConversation History:\n${contextStr}`;
 
       // Call Lovable AI
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -64,7 +116,7 @@ serve(async (req) => {
           model: node.model || 'google/gemini-2.5-flash',
           messages: [
             { role: 'system', content: node.systemPrompt },
-            { role: 'user', content: `Context: ${JSON.stringify(sharedMemory)}` }
+            { role: 'user', content: `Previous context:\n${contextStr}\n\nYour task as ${node.role}:` }
           ],
           temperature: node.temperature || 0.7,
           max_tokens: node.maxTokens || 1000,
@@ -79,7 +131,7 @@ serve(async (req) => {
       const aiResponse = await response.json();
       const content = aiResponse.choices[0].message.content;
 
-      // Save message
+      // Save message with model info
       await supabase.from('messages').insert({
         run_id: run.id,
         node_id: node.id,
@@ -88,9 +140,10 @@ serve(async (req) => {
       });
 
       // Update shared memory
-      sharedMemory.recent_messages.push({
+      sharedMemory.history.push({
         role: node.role,
         content: content,
+        model: node.model,
         timestamp: new Date().toISOString()
       });
     }
