@@ -26,11 +26,13 @@ const Landing = () => {
       <section className="container mx-auto px-6 py-20 text-center">
         <div className="animate-fade-in">
           <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-primary-glow to-accent bg-clip-text text-transparent">
-            The Agentic Workflow Studio
+            Describe → Visualize → Execute
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Design, orchestrate, and observe intelligent multi-agent workflows. 
-            Let AI agents collaborate to solve complex problems.
+          <p className="text-xl text-muted-foreground mb-4 max-w-3xl mx-auto">
+            Type what you want in plain English. Watch AI agents collaborate to make it happen.
+          </p>
+          <p className="text-lg text-muted-foreground/80 mb-8 max-w-2xl mx-auto">
+            "Research quantum computing and write a summary" becomes a team of specialized AI agents working together.
           </p>
           <Link to="/auth">
             <Button 
@@ -47,7 +49,17 @@ const Landing = () => {
 
       {/* Features Grid */}
       <section className="container mx-auto px-6 py-20">
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-4 gap-8">
+          <div className="bg-card border border-border rounded-lg p-8 hover:border-accent/50 transition-all">
+            <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
+              <Sparkles className="h-6 w-6 text-accent" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">AI-Powered Generation</h3>
+            <p className="text-muted-foreground">
+              Describe your goal in natural language. AI generates a complete workflow with specialized agents.
+            </p>
+          </div>
+
           <div className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-all">
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <Network className="h-6 w-6 text-primary" />

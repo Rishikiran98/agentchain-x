@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen, HelpCircle, Sparkles, Lightbulb } from "lucide-react";
+import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen, HelpCircle, Sparkles, Lightbulb, Download } from "lucide-react";
 import WorkflowCanvas from "@/components/WorkflowCanvas";
 import ExecutionPanel from "@/components/ExecutionPanel";
 import NodeEditor from "@/components/NodeEditor";
@@ -12,6 +12,8 @@ import OnboardingTour from "@/components/OnboardingTour";
 import AgentRoleTemplates from "@/components/AgentRoleTemplates";
 import HowItWorksModal from "@/components/HowItWorksModal";
 import WorkflowExplainer from "@/components/WorkflowExplainer";
+import WelcomeModal from "@/components/WelcomeModal";
+import PromptInput from "@/components/PromptInput";
 import { WorkflowNode, WorkflowEdge } from "@/types/workflow";
 
 const Studio = () => {
@@ -29,14 +31,20 @@ const Studio = () => {
   const [showExplainer, setShowExplainer] = useState(false);
   const [runTour, setRunTour] = useState(false);
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Check if user has seen welcome modal
+    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+    if (!hasSeenWelcome) {
+      setTimeout(() => setShowWelcome(true), 500);
+    }
+    
     // Check if user has seen tour
     const hasSeenTour = localStorage.getItem('hasSeenTour');
-    if (!hasSeenTour) {
-      // Small delay to let UI render first
+    if (!hasSeenTour && hasSeenWelcome) {
       setTimeout(() => setRunTour(true), 1000);
     }
   }, []);
@@ -327,6 +335,60 @@ const Studio = () => {
     setRunTour(false);
   };
 
+  const handleWelcomeClose = () => {
+    localStorage.setItem('hasSeenWelcome', 'true');
+    setShowWelcome(false);
+  };
+
+  const generateWorkflowFromPrompt = async (prompt: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-workflow', {
+        body: { prompt }
+      });
+
+      if (error) throw error;
+
+      setNodes(data.nodes as WorkflowNode[]);
+      setEdges(data.edges as WorkflowEdge[]);
+      setCurrentWorkflowId(null);
+      setLoadedTemplateId(null);
+      
+      toast({
+        title: "✨ Workflow generated!",
+        description: "Your AI agent team is ready. Review and run when ready.",
+        duration: 5000,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Generation failed",
+        description: error.message || "Could not generate workflow. Try again or use a template.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const exportWorkflow = () => {
+    const workflowData = {
+      nodes,
+      edges,
+      exported_at: new Date().toISOString(),
+      version: "1.0"
+    };
+    
+    const blob = new Blob([JSON.stringify(workflowData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `workflow-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Workflow exported",
+      description: "JSON file downloaded successfully",
+    });
+  };
+
   const executeWorkflow = async () => {
     if (!currentWorkflowId) {
       await saveWorkflow();
@@ -421,14 +483,24 @@ const Studio = () => {
               Save
             </Button>
             {nodes.length > 0 && (
-              <Button
-                onClick={() => setShowExplainer(true)}
-                variant="outline"
-                size="sm"
-              >
-                <Lightbulb className="h-4 w-4 mr-2" />
-                Explain
-              </Button>
+              <>
+                <Button
+                  onClick={() => setShowExplainer(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  Explain
+                </Button>
+                <Button
+                  onClick={exportWorkflow}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </>
             )}
             <Button
               onClick={executeWorkflow}
@@ -457,6 +529,12 @@ const Studio = () => {
           </div>
         </div>
       </header>
+
+      {/* Prompt Input Bar */}
+      <PromptInput 
+        onGenerate={generateWorkflowFromPrompt}
+        disabled={isExecuting}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -494,6 +572,12 @@ const Studio = () => {
           onClose={() => setShowExplainer(false)}
           nodes={nodes}
           edges={edges}
+        />
+
+        <WelcomeModal
+          open={showWelcome}
+          onClose={handleWelcomeClose}
+          onTryExample={loadDemoWorkflow}
         />
 
         {/* Right Panel */}

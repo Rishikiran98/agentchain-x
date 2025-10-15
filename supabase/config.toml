@@ -1,1 +1,7 @@
 project_id = "micmqojyhbwxfiwwjypd"
+
+[functions.execute-workflow]
+verify_jwt = false
+
+[functions.generate-workflow]
+verify_jwt = false
