@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sparkles, Loader2, ChevronDown, ChevronUp, Lightbulb, Zap } from "lucide-react";
 import { WorkflowNode } from "@/types/workflow";
 import { useToast } from "@/hooks/use-toast";
@@ -201,9 +202,9 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
 
   if (finalResult) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-background via-background to-primary/5">
-        <div className="max-w-3xl w-full space-y-6 animate-fade-in">
-          <div className="text-center">
+      <div className="h-full flex flex-col p-8 bg-gradient-to-br from-background via-background to-primary/5">
+        <div className="max-w-3xl w-full mx-auto flex flex-col h-full animate-fade-in">
+          <div className="text-center mb-6 flex-shrink-0">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
@@ -211,32 +212,35 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
             <p className="text-muted-foreground">Your AI team collaborated to create this</p>
           </div>
 
-          <Card className="p-8 bg-card/50 backdrop-blur-sm border-primary/20">
-            <div className="prose prose-invert max-w-none text-foreground leading-relaxed">
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h1: ({node, ...props}) => <h1 className="text-3xl font-bold mb-4 mt-6 text-primary" {...props} />,
-                  h2: ({node, ...props}) => <h2 className="text-2xl font-bold mb-3 mt-5 text-primary" {...props} />,
-                  h3: ({node, ...props}) => <h3 className="text-xl font-semibold mb-2 mt-4 text-primary" {...props} />,
-                  p: ({node, ...props}) => <p className="mb-4 leading-relaxed" {...props} />,
-                  ul: ({node, ...props}) => <ul className="mb-4 ml-6 list-disc space-y-2" {...props} />,
-                  ol: ({node, ...props}) => <ol className="mb-4 ml-6 list-decimal space-y-2" {...props} />,
-                  li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
-                  blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-4 text-muted-foreground" {...props} />,
-                  code: ({node, inline, ...props}: any) => 
-                    inline ? 
-                      <code className="bg-primary/10 px-1.5 py-0.5 rounded text-sm font-mono" {...props} /> :
-                      <code className="block bg-primary/10 p-4 rounded-lg my-4 overflow-x-auto font-mono text-sm" {...props} />,
-                  strong: ({node, ...props}) => <strong className="font-semibold text-primary" {...props} />,
-                }}
-              >
-                {finalResult}
-              </ReactMarkdown>
-            </div>
+          <Card className="flex-1 overflow-hidden bg-card/50 backdrop-blur-sm border-primary/20 flex flex-col">
+            <ScrollArea className="flex-1 p-8">
+              <div className="prose prose-invert max-w-none text-foreground leading-relaxed break-words">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({node, ...props}) => <h1 className="text-3xl font-bold mb-4 mt-6 text-primary break-words" {...props} />,
+                    h2: ({node, ...props}) => <h2 className="text-2xl font-bold mb-3 mt-5 text-primary break-words" {...props} />,
+                    h3: ({node, ...props}) => <h3 className="text-xl font-semibold mb-2 mt-4 text-primary break-words" {...props} />,
+                    p: ({node, ...props}) => <p className="mb-4 leading-relaxed break-words" {...props} />,
+                    ul: ({node, ...props}) => <ul className="mb-4 ml-6 list-disc space-y-2" {...props} />,
+                    ol: ({node, ...props}) => <ol className="mb-4 ml-6 list-decimal space-y-2" {...props} />,
+                    li: ({node, ...props}) => <li className="leading-relaxed break-words" {...props} />,
+                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-4 text-muted-foreground break-words" {...props} />,
+                    code: ({node, inline, ...props}: any) => 
+                      inline ? 
+                        <code className="bg-primary/10 px-1.5 py-0.5 rounded text-sm font-mono break-all" {...props} /> :
+                        <code className="block bg-primary/10 p-4 rounded-lg my-4 overflow-x-auto font-mono text-sm whitespace-pre-wrap break-words" {...props} />,
+                    strong: ({node, ...props}) => <strong className="font-semibold text-primary" {...props} />,
+                    pre: ({node, ...props}) => <pre className="overflow-x-auto whitespace-pre-wrap break-words" {...props} />,
+                  }}
+                >
+                  {finalResult}
+                </ReactMarkdown>
+              </div>
+            </ScrollArea>
           </Card>
 
-          <div className="space-y-3">
+          <div className="space-y-3 flex-shrink-0 mt-6">
             <Button
               onClick={() => setShowWorkflow(!showWorkflow)}
               variant="outline"
@@ -247,34 +251,40 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
             </Button>
 
             {showWorkflow && (
-              <Card className="p-6 bg-card/30 animate-fade-in">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Card className="p-6 bg-card/30 animate-fade-in max-h-96 overflow-hidden flex flex-col">
+                <h3 className="font-semibold mb-4 flex items-center gap-2 flex-shrink-0">
                   <Lightbulb className="h-4 w-4 text-accent" />
                   Your AI Team & Their Conversation
                 </h3>
-                <div className="space-y-4">
-                  {messages.map((msg, i) => (
-                  <div key={i} className="p-4 rounded-lg bg-background/50 border border-border">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xl">{getAgentEmoji(msg.agent)}</span>
-                        <span className="font-semibold text-sm text-primary">{msg.agent}</span>
+                <ScrollArea className="flex-1">
+                  <div className="space-y-4 pr-4">
+                    {messages.map((msg, i) => (
+                    <div key={i} className="p-4 rounded-lg bg-background/50 border border-border">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-xl">{getAgentEmoji(msg.agent)}</span>
+                          <span className="font-semibold text-sm text-primary">{msg.agent}</span>
+                        </div>
+                        <div className="text-sm text-muted-foreground prose prose-sm prose-invert max-w-none break-words">
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({node, ...props}) => <p className="mb-2 break-words" {...props} />,
+                              ul: ({node, ...props}) => <ul className="mb-2 ml-4 list-disc" {...props} />,
+                              ol: ({node, ...props}) => <ol className="mb-2 ml-4 list-decimal" {...props} />,
+                              strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                              code: ({node, inline, ...props}: any) => 
+                                inline ? 
+                                  <code className="bg-primary/10 px-1 py-0.5 rounded text-xs break-all" {...props} /> :
+                                  <code className="block bg-primary/10 p-2 rounded my-2 overflow-x-auto text-xs whitespace-pre-wrap break-words" {...props} />,
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground prose prose-sm prose-invert max-w-none">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: ({node, ...props}) => <p className="mb-2" {...props} />,
-                            ul: ({node, ...props}) => <ul className="mb-2 ml-4 list-disc" {...props} />,
-                            ol: ({node, ...props}) => <ol className="mb-2 ml-4 list-decimal" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
                 <Button
                   onClick={onSwitchToAdvanced}
                   variant="ghost"
