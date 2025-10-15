@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   id: string;
@@ -118,9 +120,24 @@ const ExecutionPanel = ({ runId }: ExecutionPanelProps) => {
                         {new Date(msg.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                      {msg.content}
-                    </p>
+                    <div className="text-sm text-foreground/90 prose prose-sm prose-invert max-w-none">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({node, ...props}) => <p className="mb-2 leading-relaxed" {...props} />,
+                          ul: ({node, ...props}) => <ul className="mb-2 ml-4 list-disc" {...props} />,
+                          ol: ({node, ...props}) => <ol className="mb-2 ml-4 list-decimal" {...props} />,
+                          h3: ({node, ...props}) => <h3 className="font-semibold mb-1 mt-2" {...props} />,
+                          strong: ({node, ...props}) => <strong className="font-semibold text-primary" {...props} />,
+                          code: ({node, inline, ...props}: any) => 
+                            inline ? 
+                              <code className="bg-primary/10 px-1 py-0.5 rounded text-xs" {...props} /> :
+                              <code className="block bg-primary/10 p-2 rounded my-2 overflow-x-auto text-xs" {...props} />,
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </Card>
