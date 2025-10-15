@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen, HelpCircle, Sparkles, Lightbulb, Download } from "lucide-react";
+import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen, HelpCircle, Sparkles, Lightbulb, Download, Wand2, Settings } from "lucide-react";
 import WorkflowCanvas from "@/components/WorkflowCanvas";
 import ExecutionPanel from "@/components/ExecutionPanel";
 import NodeEditor from "@/components/NodeEditor";
@@ -14,6 +14,7 @@ import HowItWorksModal from "@/components/HowItWorksModal";
 import WorkflowExplainer from "@/components/WorkflowExplainer";
 import WelcomeModal from "@/components/WelcomeModal";
 import PromptInput from "@/components/PromptInput";
+import SimpleMode from "@/components/SimpleMode";
 import { WorkflowNode, WorkflowEdge } from "@/types/workflow";
 
 const Studio = () => {
@@ -32,22 +33,29 @@ const Studio = () => {
   const [runTour, setRunTour] = useState(false);
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [isSimpleMode, setIsSimpleMode] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user has seen welcome modal
+    // Check if user prefers advanced mode
+    const preferredMode = localStorage.getItem('preferredMode');
+    if (preferredMode === 'advanced') {
+      setIsSimpleMode(false);
+    }
+    
+    // Check if user has seen welcome modal (only for simple mode)
     const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
-    if (!hasSeenWelcome) {
+    if (!hasSeenWelcome && isSimpleMode) {
       setTimeout(() => setShowWelcome(true), 500);
     }
     
-    // Check if user has seen tour
+    // Check if user has seen tour (only for advanced mode)
     const hasSeenTour = localStorage.getItem('hasSeenTour');
-    if (!hasSeenTour && hasSeenWelcome) {
+    if (!hasSeenTour && hasSeenWelcome && !isSimpleMode) {
       setTimeout(() => setRunTour(true), 1000);
     }
-  }, []);
+  }, [isSimpleMode]);
 
   // Auto-load template on first launch if no workflows
   useEffect(() => {
@@ -340,6 +348,24 @@ const Studio = () => {
     setShowWelcome(false);
   };
 
+  const switchToAdvanced = () => {
+    setIsSimpleMode(false);
+    localStorage.setItem('preferredMode', 'advanced');
+    toast({
+      title: "Advanced Mode",
+      description: "Full workflow builder unlocked",
+    });
+  };
+
+  const switchToSimple = () => {
+    setIsSimpleMode(true);
+    localStorage.setItem('preferredMode', 'simple');
+    toast({
+      title: "Simple Mode",
+      description: "Back to effortless creation",
+    });
+  };
+
   const generateWorkflowFromPrompt = async (prompt: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('generate-workflow', {
@@ -419,20 +445,67 @@ const Studio = () => {
     }
   };
 
+  if (isSimpleMode) {
+    return (
+      <div className="h-screen bg-background flex flex-col">
+        {/* Simple Header */}
+        <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+          <div className="px-6 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Wand2 className="h-8 w-8 text-primary" />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                PromptChain-X
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleSignOut}
+                variant="ghost"
+                size="sm"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <SimpleMode onSwitchToAdvanced={switchToAdvanced} />
+
+        <WelcomeModal
+          open={showWelcome}
+          onClose={handleWelcomeClose}
+          onTryExample={loadDemoWorkflow}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen bg-background flex flex-col">
       <OnboardingTour runTour={runTour} onComplete={handleTourComplete} />
       
-      {/* Header */}
+      {/* Advanced Mode Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Network className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              PromptChain-X
-            </h1>
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                PromptChain-X
+              </h1>
+              <p className="text-xs text-muted-foreground">Advanced Mode</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              onClick={switchToSimple}
+              variant="outline"
+              size="sm"
+              className="border-accent/50"
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              Simple Mode
+            </Button>
             {nodes.length === 0 && (
               <Button
                 onClick={loadDemoWorkflow}
