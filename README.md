@@ -1,4 +1,4 @@
-# Welcome to your Lovable project
+# Welcome to AgentChain-X: Your AI Agent Collaboration Platform
 
 ## Project info
 
