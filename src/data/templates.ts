@@ -249,5 +249,180 @@ export const workflowTemplates: WorkflowTemplate[] = [
       { id: "e1", from: "retriever", to: "generator" },
       { id: "e2", from: "generator", to: "evaluator" }
     ]
+  },
+  {
+    id: "api-design",
+    title: "API Design & Implementation",
+    description: "End-to-end API development from design to implementation and documentation",
+    nodes: [
+      {
+        id: "architect",
+        role: "API Architect",
+        systemPrompt: "Design RESTful API endpoints, data models, and authentication strategy. Consider scalability and best practices. Output OpenAPI-style specification.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.6,
+        maxTokens: 1200,
+        x: 50,
+        y: 50
+      },
+      {
+        id: "developer",
+        role: "Backend Developer",
+        systemPrompt: "Implement the API based on the design. Write clean, production-ready code with error handling, validation, and proper status codes.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.5,
+        maxTokens: 1500,
+        x: 300,
+        y: 50
+      },
+      {
+        id: "doc-writer",
+        role: "Technical Writer",
+        systemPrompt: "Create comprehensive API documentation including endpoints, parameters, response formats, error codes, and usage examples.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.6,
+        maxTokens: 1000,
+        x: 550,
+        y: 50
+      }
+    ],
+    edges: [
+      { id: "e1", from: "architect", to: "developer" },
+      { id: "e2", from: "developer", to: "doc-writer" }
+    ]
+  },
+  {
+    id: "bug-investigation",
+    title: "Bug Investigation & Fix",
+    description: "Systematic bug analysis, root cause identification, and solution implementation",
+    nodes: [
+      {
+        id: "debugger",
+        role: "Debugger",
+        systemPrompt: "Analyze the bug report, error messages, and logs. Identify symptoms and potential causes. Create a hypothesis about the root cause.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.5,
+        maxTokens: 1000,
+        x: 50,
+        y: 50
+      },
+      {
+        id: "developer",
+        role: "Developer",
+        systemPrompt: "Implement a fix for the identified issue. Write clean code with proper error handling. Include comments explaining the fix.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.5,
+        maxTokens: 1200,
+        x: 300,
+        y: 50
+      },
+      {
+        id: "tester",
+        role: "QA Tester",
+        systemPrompt: "Create test cases to verify the bug is fixed and no regressions were introduced. Test edge cases and related functionality.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.6,
+        maxTokens: 900,
+        x: 550,
+        y: 50
+      }
+    ],
+    edges: [
+      { id: "e1", from: "debugger", to: "developer" },
+      { id: "e2", from: "developer", to: "tester" }
+    ]
+  },
+  {
+    id: "db-schema",
+    title: "Database Schema Design",
+    description: "Design normalized database schema with relationships and constraints",
+    nodes: [
+      {
+        id: "analyst",
+        role: "Data Analyst",
+        systemPrompt: "Analyze data requirements, identify entities, attributes, and relationships. Define data types and constraints needed.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.6,
+        maxTokens: 1000,
+        x: 50,
+        y: 50
+      },
+      {
+        id: "architect",
+        role: "Database Architect",
+        systemPrompt: "Design normalized schema (3NF), define primary/foreign keys, indexes, and constraints. Consider query performance and scalability.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.5,
+        maxTokens: 1200,
+        x: 300,
+        y: 50
+      },
+      {
+        id: "developer",
+        role: "Database Developer",
+        systemPrompt: "Write SQL migration scripts to create tables, indexes, and constraints. Include sample data and validation queries.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.5,
+        maxTokens: 1500,
+        x: 550,
+        y: 50
+      },
+      {
+        id: "reviewer",
+        role: "Schema Reviewer",
+        systemPrompt: "Review schema for normalization, performance bottlenecks, missing indexes, and potential issues. Suggest optimizations.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.6,
+        maxTokens: 800,
+        x: 800,
+        y: 50
+      }
+    ],
+    edges: [
+      { id: "e1", from: "analyst", to: "architect" },
+      { id: "e2", from: "architect", to: "developer" },
+      { id: "e3", from: "developer", to: "reviewer" }
+    ]
+  },
+  {
+    id: "tech-docs",
+    title: "Technical Documentation",
+    description: "Create comprehensive technical documentation for developers",
+    nodes: [
+      {
+        id: "analyst",
+        role: "Code Analyst",
+        systemPrompt: "Analyze the codebase, identify key components, APIs, data flows, and architecture patterns. Extract technical details.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.5,
+        maxTokens: 1200,
+        x: 50,
+        y: 50
+      },
+      {
+        id: "writer",
+        role: "Technical Writer",
+        systemPrompt: "Write clear, well-structured technical documentation including setup, architecture, API reference, and usage examples. Use diagrams where helpful.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.6,
+        maxTokens: 1500,
+        x: 300,
+        y: 50
+      },
+      {
+        id: "reviewer",
+        role: "Documentation Reviewer",
+        systemPrompt: "Review documentation for accuracy, completeness, clarity, and proper formatting. Verify code examples work. Suggest improvements.",
+        model: "google/gemini-2.5-flash",
+        temperature: 0.6,
+        maxTokens: 800,
+        x: 550,
+        y: 50
+      }
+    ],
+    edges: [
+      { id: "e1", from: "analyst", to: "writer" },
+      { id: "e2", from: "writer", to: "reviewer" }
+    ]
   }
 ];

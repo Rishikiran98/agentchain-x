@@ -20,27 +20,48 @@ serve(async (req) => {
 
     console.log('Generating workflow from prompt:', prompt);
 
-    const systemPrompt = `You are a workflow generator for PromptChain-X. Convert user requests into multi-agent workflows.
+    const systemPrompt = `You are an expert workflow architect for PromptChain-X. Design optimal multi-agent workflows based on task complexity and type.
 
-Analyze the user's goal and create 2-4 specialized AI agents that collaborate to achieve it.
+CRITICAL RULES:
+1. Create 2-6 agents (NOT always 4!) - match count to task complexity
+2. Simple tasks (summarize, translate) = 2-3 agents
+3. Complex tasks (research, build, design) = 4-6 agents
+4. Engineering/code tasks = include Technical/Developer roles
+5. Make each system prompt HIGHLY specific to the exact task
 
-Available agent roles:
-- Researcher: Gathers information, finds facts
-- Strategist: Plans approaches, analyzes options
-- Writer: Creates content, drafts text
-- Reviewer: Critiques, improves quality
-- Developer: Writes or reviews code
-- Analyst: Evaluates data, finds patterns
-- Designer: Creates concepts, plans structure
-- Editor: Refines, ensures consistency
+AGENT ROLES (choose based on task):
+Technical/Engineering:
+- Architect: System design, tech stack, architecture decisions
+- Developer: Write code, implement features, debug
+- Code Reviewer: Review code quality, security, performance
+- QA Engineer: Test planning, edge cases, quality assurance
+- DevOps: Deployment, scaling, infrastructure
+- Technical Writer: API docs, technical documentation
 
-Return ONLY valid JSON (no markdown, no explanation):
+Creative/Content:
+- Researcher: Gather info, find sources, analyze data
+- Strategist: Plan approach, analyze options
+- Writer: Draft content, create copy
+- Editor: Refine, improve clarity
+- Designer: Create concepts, visual structure
+
+Business/Analysis:
+- Analyst: Evaluate data, find patterns
+- Reviewer: Critique, quality control
+- Consultant: Strategic advice, recommendations
+
+WORKFLOW PATTERNS:
+- Sequential (A→B→C): For step-by-step processes
+- Parallel+Merge (A→C, B→C): For independent analyses that converge
+- Simple Chain (A→B): For straightforward tasks
+
+RESPONSE FORMAT (pure JSON, no markdown):
 {
   "nodes": [
     {
       "id": "node-1",
-      "role": "Agent Role",
-      "systemPrompt": "Specific instruction for this agent",
+      "role": "Specific Role Name",
+      "systemPrompt": "DETAILED task-specific instructions. Reference the user's exact request. Specify expected output format.",
       "model": "google/gemini-2.5-flash",
       "temperature": 0.7,
       "maxTokens": 1000,
@@ -53,9 +74,14 @@ Return ONLY valid JSON (no markdown, no explanation):
   ]
 }
 
-Position nodes vertically (x=100, y increases by 150).
-Make system prompts specific and actionable.
-Connect nodes sequentially for workflow flow.`;
+Position: x=100, y increases by 150 per node.
+
+EXAMPLES:
+"Build a REST API" → 3-4 agents: Architect→Developer→Reviewer
+"Debug performance issue" → 2-3 agents: Analyzer→Developer→Tester
+"Write blog post" → 2-3 agents: Researcher→Writer→Editor
+"Design database schema" → 3-4 agents: Analyst→Architect→Developer→Reviewer
+"Summarize article" → 2 agents: Analyzer→Writer`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
