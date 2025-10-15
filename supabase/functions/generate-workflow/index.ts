@@ -114,6 +114,8 @@ WORKFLOW PATTERNS:
 - Branching (A→B→D, A→C→D): Different approaches merge
 - Complex Multi-stage: For comprehensive projects with validation gates
 
+CRITICAL: All nodes MUST use "google/gemini-2.5-flash" as the model. Do not use any other model names.
+
 RESPONSE FORMAT (pure JSON, no markdown wrapper):
 {
   "nodes": [
