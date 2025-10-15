@@ -261,15 +261,15 @@ const Studio = () => {
     }
   };
 
-  const loadTemplate = (templateNodes: WorkflowNode[], templateEdges: WorkflowEdge[]) => {
+  const loadTemplate = (templateId: string, templateNodes: WorkflowNode[], templateEdges: WorkflowEdge[], templateTitle: string) => {
     setNodes(templateNodes);
     setEdges(templateEdges);
     setCurrentWorkflowId(null);
-    setLoadedTemplateId(null); // Will be treated as a new workflow on save
+    setLoadedTemplateId(templateId);
     setShowTemplates(false);
     toast({
       title: "Template loaded",
-      description: "Customize and save as your own workflow",
+      description: `"${templateTitle}" is ready to customize and run`,
     });
   };
 
