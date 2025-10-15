@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen, HelpCircle, Sparkles, Lightbulb, Download, Wand2, Settings } from "lucide-react";
+import { Network, Play, LogOut, Plus, Link2, Save, FolderOpen, HelpCircle, Sparkles, Wand2, Settings } from "lucide-react";
 import WorkflowCanvas from "@/components/WorkflowCanvas";
 import ExecutionPanel from "@/components/ExecutionPanel";
 import NodeEditor from "@/components/NodeEditor";
@@ -484,107 +484,57 @@ const Studio = () => {
     <div className="h-screen bg-background flex flex-col">
       <OnboardingTour runTour={runTour} onComplete={handleTourComplete} />
       
-      {/* Advanced Mode Header */}
+      {/* Simplified Advanced Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="px-6 py-4 flex justify-between items-center">
+        <div className="px-6 py-3 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Network className="h-8 w-8 text-primary" />
+            <Network className="h-7 w-7 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                PromptChain-X
-              </h1>
-              <p className="text-xs text-muted-foreground">Advanced Mode</p>
+              <h1 className="text-xl font-bold">PromptChain-X</h1>
+              <p className="text-xs text-muted-foreground">Visual Workflow Builder</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
               onClick={switchToSimple}
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="border-accent/50"
             >
               <Wand2 className="h-4 w-4 mr-2" />
-              Simple Mode
+              Back to Simple
             </Button>
+            <div className="h-6 w-px bg-border mx-2" />
             {nodes.length === 0 && (
               <Button
                 onClick={loadDemoWorkflow}
-                variant="outline"
+                variant="default"
                 size="sm"
-                className="border-accent/50 text-accent hover:bg-accent/10"
-                data-tour="demo"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
-                Try Example
+                Load Example
               </Button>
             )}
-            <Button
-              onClick={addNode}
-              variant="outline"
-              size="sm"
-              className="border-primary/50"
-              data-tour="add-agent"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Agent
-            </Button>
-            <Button
-              onClick={toggleConnectMode}
-              variant={isConnectMode ? "default" : "outline"}
-              size="sm"
-              className={isConnectMode ? "bg-accent" : ""}
-              data-tour="connect-button"
-            >
-              <Link2 className="h-4 w-4 mr-2" />
-              Connect
-            </Button>
-            <Button
-              onClick={() => setShowTemplates(true)}
-              variant="outline"
-              size="sm"
-              data-tour="templates"
-            >
-              <FolderOpen className="h-4 w-4 mr-2" />
-              Templates
-            </Button>
-            <Button
-              onClick={saveWorkflow}
-              variant="outline"
-              size="sm"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
             {nodes.length > 0 && (
               <>
                 <Button
-                  onClick={() => setShowExplainer(true)}
-                  variant="outline"
+                  onClick={executeWorkflow}
+                  disabled={isExecuting || nodes.length === 0}
                   size="sm"
+                  className="bg-primary hover:bg-primary/90"
                 >
-                  <Lightbulb className="h-4 w-4 mr-2" />
-                  Explain
+                  <Play className="h-4 w-4 mr-2" />
+                  {isExecuting ? "Running..." : "Run Workflow"}
                 </Button>
                 <Button
-                  onClick={exportWorkflow}
+                  onClick={saveWorkflow}
                   variant="outline"
                   size="sm"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
                 </Button>
               </>
             )}
-            <Button
-              onClick={executeWorkflow}
-              disabled={isExecuting || nodes.length === 0}
-              size="sm"
-              className="bg-primary hover:bg-primary/90"
-              data-tour="run-workflow"
-            >
-              <Play className="h-4 w-4 mr-2" />
-              {isExecuting ? "Running..." : "Run Workflow"}
-            </Button>
             <Button
               onClick={() => setShowHowItWorks(true)}
               variant="ghost"
@@ -603,6 +553,80 @@ const Studio = () => {
         </div>
       </header>
 
+      {/* Step-by-Step Guide */}
+      {nodes.length === 0 ? (
+        <div className="border-b border-border bg-accent/5 px-6 py-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Start Your Workflow
+            </h2>
+            <p className="text-sm text-muted-foreground mb-3">
+              Create AI agent teams in 3 ways:
+            </p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-card/50 rounded-lg p-4 border border-border">
+                <div className="text-primary font-semibold mb-2">1. Describe it</div>
+                <p className="text-xs text-muted-foreground">Type what you want below and we'll build it</p>
+              </div>
+              <div className="bg-card/50 rounded-lg p-4 border border-border">
+                <div className="text-primary font-semibold mb-2">2. Load Example</div>
+                <p className="text-xs text-muted-foreground">Start with a pre-built template</p>
+              </div>
+              <div className="bg-card/50 rounded-lg p-4 border border-border">
+                <div className="text-primary font-semibold mb-2">3. Build Custom</div>
+                <p className="text-xs text-muted-foreground">Add agents manually below</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="border-b border-border bg-card/50 px-6 py-3">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary">
+                  {nodes.length}
+                </div>
+                <span className="text-sm text-muted-foreground">Agents</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-accent/20 flex items-center justify-center text-xs font-semibold text-accent">
+                  {edges.length}
+                </div>
+                <span className="text-sm text-muted-foreground">Connections</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={addNode}
+                variant="outline"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Agent
+              </Button>
+              <Button
+                onClick={toggleConnectMode}
+                variant={isConnectMode ? "default" : "outline"}
+                size="sm"
+              >
+                <Link2 className="h-4 w-4 mr-2" />
+                {isConnectMode ? "Connecting..." : "Connect"}
+              </Button>
+              <Button
+                onClick={() => setShowTemplates(true)}
+                variant="outline"
+                size="sm"
+              >
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Templates
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Prompt Input Bar */}
       <PromptInput 
         onGenerate={generateWorkflowFromPrompt}
@@ -613,19 +637,35 @@ const Studio = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Canvas */}
         <div className="flex-1 relative" data-tour="canvas">
-          <WorkflowCanvas
-            nodes={nodes}
-            edges={edges}
-            selectedNode={selectedNode}
-            onSelectNode={handleNodeClick}
-            onUpdateNode={updateNode}
-            isConnectMode={isConnectMode}
-            connectStart={connectStart}
-            onDeleteEdge={deleteEdge}
-            isExecuting={isExecuting}
-          />
-          
-          <AgentRoleTemplates onSelectRole={handleRoleSelect} />
+          {nodes.length === 0 ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center space-y-4 max-w-md">
+                <Network className="h-16 w-16 mx-auto text-muted-foreground/30" />
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Your Canvas is Ready</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Describe what you want in the text box above, or click "Load Example" to see how it works
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <WorkflowCanvas
+                nodes={nodes}
+                edges={edges}
+                selectedNode={selectedNode}
+                onSelectNode={handleNodeClick}
+                onUpdateNode={updateNode}
+                isConnectMode={isConnectMode}
+                connectStart={connectStart}
+                onDeleteEdge={deleteEdge}
+                isExecuting={isExecuting}
+              />
+              
+              <AgentRoleTemplates onSelectRole={handleRoleSelect} />
+            </>
+          )}
         </div>
 
         {showTemplates && (
@@ -654,23 +694,31 @@ const Studio = () => {
         />
 
         {/* Right Panel */}
-        <div className="w-96 border-l border-border bg-card/50 flex flex-col">
-          {selectedNode ? (
-            <NodeEditor
-              node={selectedNode}
-              onUpdate={(updates) => updateNode(selectedNode.id, updates)}
-              onDelete={() => deleteNode(selectedNode.id)}
-            />
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              Select a node to edit
-            </div>
-          )}
-          
-          {currentRunId && (
-            <ExecutionPanel runId={currentRunId} />
-          )}
-        </div>
+        {nodes.length > 0 && (
+          <div className="w-96 border-l border-border bg-card/50 flex flex-col">
+            {selectedNode ? (
+              <NodeEditor
+                node={selectedNode}
+                onUpdate={(updates) => updateNode(selectedNode.id, updates)}
+                onDelete={() => deleteNode(selectedNode.id)}
+              />
+            ) : currentRunId ? (
+              <ExecutionPanel runId={currentRunId} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="text-center space-y-3">
+                  <Settings className="h-12 w-12 mx-auto text-muted-foreground/30" />
+                  <div>
+                    <h3 className="font-semibold mb-1">Configure Your Agents</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Click any agent on the canvas to edit its role, prompt, and settings
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
