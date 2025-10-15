@@ -251,12 +251,12 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
             </Button>
 
             {showWorkflow && (
-              <Card className="p-6 bg-card/30 animate-fade-in max-h-96 overflow-hidden flex flex-col">
+              <Card className="p-6 bg-card/30 animate-fade-in h-[500px] flex flex-col">
                 <h3 className="font-semibold mb-4 flex items-center gap-2 flex-shrink-0">
                   <Lightbulb className="h-4 w-4 text-accent" />
                   Your AI Team & Their Conversation
                 </h3>
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 h-full">
                   <div className="space-y-4 pr-4">
                     {messages.map((msg, i) => (
                     <div key={i} className="p-4 rounded-lg bg-background/50 border border-border">
@@ -264,11 +264,11 @@ const SimpleMode = ({ onSwitchToAdvanced }: SimpleModeProps) => {
                           <span className="text-xl">{getAgentEmoji(msg.agent)}</span>
                           <span className="font-semibold text-sm text-primary">{msg.agent}</span>
                         </div>
-                        <div className="text-sm text-muted-foreground prose prose-sm prose-invert max-w-none break-words">
+                        <div className="text-sm text-muted-foreground prose prose-sm prose-invert max-w-none break-words whitespace-pre-wrap">
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
                             components={{
-                              p: ({node, ...props}) => <p className="mb-2 break-words" {...props} />,
+                              p: ({node, ...props}) => <p className="mb-2 break-words whitespace-pre-wrap" {...props} />,
                               ul: ({node, ...props}) => <ul className="mb-2 ml-4 list-disc" {...props} />,
                               ol: ({node, ...props}) => <ol className="mb-2 ml-4 list-decimal" {...props} />,
                               strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,

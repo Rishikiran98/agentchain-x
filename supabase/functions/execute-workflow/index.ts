@@ -119,7 +119,7 @@ serve(async (req) => {
             { role: 'user', content: `Previous context:\n${contextStr}\n\nYour task as ${node.role}:` }
           ],
           temperature: node.temperature || 0.7,
-          max_tokens: node.maxTokens || 1000,
+          max_tokens: node.maxTokens || 3000,
         }),
       });
 

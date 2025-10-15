@@ -125,7 +125,7 @@ RESPONSE FORMAT (pure JSON, no markdown wrapper):
       "systemPrompt": "ULTRA-SPECIFIC instructions referencing user's exact request. For technical tasks, include frameworks/languages/patterns to use. For FINAL agent, include formatting instructions. Be detailed and actionable.",
       "model": "google/gemini-2.5-flash",
       "temperature": 0.7,
-      "maxTokens": 2000,
+      "maxTokens": 4000,
       "x": 100,
       "y": 100
     }
