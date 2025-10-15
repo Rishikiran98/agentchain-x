@@ -13,7 +13,6 @@ import AgentRoleTemplates from "@/components/AgentRoleTemplates";
 import HowItWorksModal from "@/components/HowItWorksModal";
 import WorkflowExplainer from "@/components/WorkflowExplainer";
 import { WorkflowNode, WorkflowEdge } from "@/types/workflow";
-import { workflowTemplates } from "@/data/templates";
 
 const Studio = () => {
   const [user, setUser] = useState<any>(null);
@@ -29,6 +28,7 @@ const Studio = () => {
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [showExplainer, setShowExplainer] = useState(false);
   const [runTour, setRunTour] = useState(false);
+  const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -40,6 +40,56 @@ const Studio = () => {
       setTimeout(() => setRunTour(true), 1000);
     }
   }, []);
+
+  // Auto-load template on first launch if no workflows
+  useEffect(() => {
+    const autoLoadTemplate = async () => {
+      if (!user) return;
+
+      try {
+        // Check if user has any workflows
+        const { data: userWorkflows, error: workflowError } = await supabase
+          .from('workflows')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_template', false)
+          .limit(1);
+
+        if (workflowError) throw workflowError;
+
+        // If no workflows, load the first template
+        if (!userWorkflows || userWorkflows.length === 0) {
+          const { data: templates, error: templateError } = await supabase
+            .from('workflows')
+            .select('*')
+            .eq('is_template', true)
+            .order('created_at', { ascending: true })
+            .limit(1);
+
+          if (templateError) throw templateError;
+
+          if (templates && templates.length > 0) {
+            const template = templates[0];
+            setNodes(template.nodes as unknown as WorkflowNode[]);
+            setEdges(template.edges as unknown as WorkflowEdge[]);
+            setLoadedTemplateId(template.id);
+            
+            toast({
+              title: "✨ Welcome to PromptChain-X!",
+              description: `Loaded "${template.title}" template. Click Run Workflow to see agents collaborate!`,
+              duration: 6000,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error auto-loading template:', error);
+      }
+    };
+
+    if (user && nodes.length === 0) {
+      autoLoadTemplate();
+    }
+  }, [user]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -141,8 +191,30 @@ const Studio = () => {
     if (!user) return;
 
     try {
-      if (currentWorkflowId) {
-        // Update existing
+      // If we loaded a template, always create a new workflow (clone)
+      if (loadedTemplateId && !currentWorkflowId) {
+        const { data, error } = await supabase
+          .from('workflows')
+          .insert([{
+            user_id: user.id,
+            title: 'My Custom Workflow',
+            nodes: nodes as any,
+            edges: edges as any,
+            is_template: false
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+        setCurrentWorkflowId(data.id);
+        setLoadedTemplateId(null); // Clear template ID after cloning
+        
+        toast({
+          title: "Workflow saved",
+          description: "Template cloned as your personal workflow.",
+        });
+      } else if (currentWorkflowId) {
+        // Update existing workflow
         const { error } = await supabase
           .from('workflows')
           .update({
@@ -153,27 +225,33 @@ const Studio = () => {
           .eq('id', currentWorkflowId);
 
         if (error) throw error;
+        
+        toast({
+          title: "Workflow updated",
+          description: "Your changes have been saved.",
+        });
       } else {
-        // Create new
+        // Create new workflow from scratch
         const { data, error } = await supabase
           .from('workflows')
           .insert([{
             user_id: user.id,
             title: 'My Workflow',
             nodes: nodes as any,
-            edges: edges as any
+            edges: edges as any,
+            is_template: false
           }])
           .select()
           .single();
 
         if (error) throw error;
         setCurrentWorkflowId(data.id);
+        
+        toast({
+          title: "Workflow saved",
+          description: "Your workflow has been saved successfully.",
+        });
       }
-
-      toast({
-        title: "Workflow saved",
-        description: "Your workflow has been saved successfully.",
-      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -187,22 +265,45 @@ const Studio = () => {
     setNodes(templateNodes);
     setEdges(templateEdges);
     setCurrentWorkflowId(null);
+    setLoadedTemplateId(null); // Will be treated as a new workflow on save
     setShowTemplates(false);
     toast({
       title: "Template loaded",
-      description: "You can now customize and run this workflow",
+      description: "Customize and save as your own workflow",
     });
   };
 
-  const loadDemoWorkflow = () => {
-    const demoTemplate = workflowTemplates[0]; // Startup Idea Generator
-    setNodes(demoTemplate.nodes);
-    setEdges(demoTemplate.edges);
-    toast({
-      title: "✨ Demo workflow loaded!",
-      description: "Click 'Run Workflow' to see it in action",
-      duration: 5000,
-    });
+  const loadDemoWorkflow = async () => {
+    try {
+      const { data: templates, error } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('is_template', true)
+        .order('created_at', { ascending: true })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (templates && templates.length > 0) {
+        const template = templates[0];
+        setNodes(template.nodes as unknown as WorkflowNode[]);
+        setEdges(template.edges as unknown as WorkflowEdge[]);
+        setLoadedTemplateId(template.id);
+        
+        toast({
+          title: "✨ Demo workflow loaded!",
+          description: "Click 'Run Workflow' to see it in action",
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading demo:', error);
+      toast({
+        title: "Error",
+        description: "Could not load demo workflow",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRoleSelect = (role: string, systemPrompt: string) => {

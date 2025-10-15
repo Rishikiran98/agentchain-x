@@ -93,30 +93,33 @@ export type Database = {
           description: string | null
           edges: Json
           id: string
+          is_template: boolean | null
           nodes: Json
           title: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           edges?: Json
           id?: string
+          is_template?: boolean | null
           nodes?: Json
           title: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           description?: string | null
           edges?: Json
           id?: string
+          is_template?: boolean | null
           nodes?: Json
           title?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
